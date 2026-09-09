@@ -17,6 +17,7 @@ jobs:
         shell: bash
         run: |
           set -e
+          printf '\n' >> .release/app.patch
           git apply --check .release/app.patch
           git apply .release/app.patch
           cp .release/ci-final.yml .github/workflows/ci.yml
