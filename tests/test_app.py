@@ -77,7 +77,7 @@ class AppTests(unittest.TestCase):
                     {"open": 110, "high": 130, "low": 100, "close": 105},
                 ]
                 ts = [1700000000000, 1700086400000]
-                app.render_image(100000, 1800000, 1200, 1, ohlc, ts, 123000, "2025-01-01 00:00:00", [["BTC/USD", 100000, 123000, "18.7%"]], None, True, False)
+                app.render_image(100000, 1800000, "MXN", 1200, 1, ohlc, ts, 123000, "2025-01-01 00:00:00", [["BTC/USD", 100000, 123000, "18.7%"]], None, True, False)
                 self.assertTrue(app.OUTPUT_FILE.exists())
                 self.assertGreater(app.OUTPUT_FILE.stat().st_size, 1000)
             finally:
@@ -113,10 +113,44 @@ class AppTests(unittest.TestCase):
         actual = [(line.split(",")[0], line.split(",")[1]) for line in lines]
         self.assertEqual(actual, expected)
 
-    def test_mxn_is_main_local_currency(self):
-        source = (ROOT / "app.py").read_text(encoding="utf-8")
-        self.assertIn('"vs_currencies": "usd,mxn"', source)
-        self.assertIn("usd_mxn_fallback_rate", app.DEFAULT_EXTRAS)
+    def test_secondary_fiat_defaults_to_mxn_and_validates(self):
+        self.assertEqual(app.normalize_secondary_fiat(None), "MXN")
+        self.assertEqual(app.normalize_secondary_fiat("eur"), "EUR")
+        with self.assertRaises(ValueError):
+            app.normalize_secondary_fiat("ZZZ")
+
+    def test_secondary_display_label_uses_configured_fiat(self):
+        self.assertEqual(app.format_secondary_price(1234.4, "EUR"), "1,234 EUR")
+        self.assertEqual(app.format_secondary_price("N/A", "GBP"), "N/A GBP")
+
+    def test_coingecko_requests_selected_secondary_fiat(self):
+        cfg = {"secondary_fiat": "EUR", "usd_mxn_fallback_rate": 16.92}
+        payload = {"bitcoin": {"usd": 100000, "eur": 85000, "usd_24h_change": 1.25}}
+        with mock.patch.object(app, "request_json", return_value=payload) as req:
+            result = app.fetch_btc_main_coingecko(cfg)
+        self.assertEqual(result["price_secondary"], 85000)
+        self.assertEqual(result["secondary_fiat"], "EUR")
+        self.assertEqual(req.call_args.kwargs["params"]["vs_currencies"], "usd,eur")
+
+    def test_mxn_fallback_is_never_applied_to_other_fiat(self):
+        self.assertIsNone(app._secondary_from_mxn_fallback(100000, {"secondary_fiat": "EUR", "usd_mxn_fallback_rate": 16.92}))
+        self.assertEqual(app._secondary_from_mxn_fallback(100000, {"secondary_fiat": "MXN", "usd_mxn_fallback_rate": 16.92}), 1692000)
+
+    def test_legacy_cache_is_identified_as_mxn(self):
+        self.assertEqual(app.cached_secondary_fiat({"price_mxn": 1800000}), "MXN")
+        self.assertEqual(app.cached_secondary_fiat({"price_secondary": 85000, "secondary_fiat": "EUR"}), "EUR")
+
+    def test_fetch_main_prefers_provider_with_selected_fiat(self):
+        cfg = {"secondary_fiat": "EUR", "usd_mxn_fallback_rate": 16.92}
+        usd_only = app._main_result(100000, None, "EUR", 1.0, 1000, "cryptocompare")
+        with_secondary = app._main_result(100100, 85100, "EUR", 1.1, 1100, "coingecko")
+        with mock.patch.object(app, "fetch_btc_main_coingecko", return_value=None), \
+             mock.patch.object(app, "fetch_btc_main_cryptocompare", return_value=usd_only), \
+             mock.patch.object(app, "fetch_btc_main_coinpaprika", return_value=usd_only), \
+             mock.patch.object(app, "fetch_btc_main_binance", return_value=with_secondary), \
+             mock.patch.object(app, "fetch_btc_main_kraken", return_value=None):
+            result = app.fetch_btc_main_live(cfg)
+        self.assertEqual(result["price_secondary"], 85100)
 
 
 if __name__ == "__main__":
