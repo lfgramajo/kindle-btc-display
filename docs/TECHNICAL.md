@@ -151,6 +151,6 @@ The installer prebuilds the candidate image before stopping the current Kindle c
 
 ## Secondary fiat behavior
 
-The main BTC line remains USD. `secondary_fiat` controls the second BTC price and rendered label. `MXN` is the release default. CoinGecko is the authoritative arbitrary-fiat provider in v1.7.0 because its official `vs_currencies` interface publishes a supported-currency list. Existing fallback providers continue protecting the USD main price. The legacy static conversion is restricted to MXN only.
+The main BTC line remains USD. `secondary_fiat` controls the second BTC price and rendered label. `MXN` is the release default. CoinGecko is the normal arbitrary-fiat provider in v1.7.0. GTQ has a deliberate exception: if CoinGecko does not return GTQ, the application multiplies the selected live BTC/USD provider value by Banco de Guatemala's official `TipoCambioDia` USD/GTQ reference rate. Existing fallback providers continue protecting the USD main price. The legacy static conversion is restricted to MXN only.
 
 The price cache stores the secondary-fiat identity. Changing the configured fiat forces the main-price cache path stale and prevents an older MXN value from being rendered under an EUR, GBP, JPY, or other label. If a refresh can update USD but cannot update the selected secondary fiat, a matching last-known-good secondary value may be retained instead of being replaced by an unrelated currency.

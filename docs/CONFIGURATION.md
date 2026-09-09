@@ -41,6 +41,8 @@ IDR ILS INR JPY KRW KWD LKR MMK MXN MYR NGN NOK NZD PHP PKR PLN RUB SAR
 SEK SGD THB TRY TWD UAH USD VEF VND ZAR
 ```
 
+GTQ provider note: CoinGecko's current supported-currency response omits GTQ, so when `secondary_fiat=GTQ` the application uses Banco de Guatemala's official daily USD/GTQ reference rate if CoinGecko does not provide a direct GTQ value.
+
 Former-G8 examples (today the G7 plus Russia): `CAD`, `GBP`, `EUR`, `JPY`, `RUB`; the primary line already displays `USD`.
 
 Currencies corresponding to the 2025 Chainalysis top-10 crypto-adoption markets: `INR`, `USD`, `PKR`, `VND`, `BRL`, `NGN`, `IDR`, `UAH`, `PHP`, `RUB`. This is an adoption ranking, not a Bitcoin-only volume ranking.
