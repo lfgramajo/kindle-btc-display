@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.7.0
+
+- Promoted v1.7.0-rc3 to the final release after clean-host installation, MXN-default, EUR-secondary-fiat, visual, cache-recovery, and uninstall/restore QA passed.
+- No functional changes from the validated RC3 runtime; release metadata and version labels only.
+
 ## v1.7.0-rc3
 
 - Restored configurable secondary BTC fiat with `secondary_fiat=MXN` as the default.
