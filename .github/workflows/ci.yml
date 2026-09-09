@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - release/v1.7.0-build
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -13,6 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: release/v1.7.0-build
       - name: Materialize final source
         shell: bash
         run: |
