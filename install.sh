@@ -19,7 +19,7 @@ if [ "${1:-}" = "--help" ]; then
   exit 0
 fi
 
-echo "== KINDLE BITCOIN PRICE DISPLAY 1.7.0-rc3 INSTALL =="
+echo "== KINDLE BITCOIN PRICE DISPLAY 1.7.0 INSTALL =="
 echo "SOURCE_DIR=$SOURCE_DIR"
 echo "APP_ROOT=$APP_ROOT"
 
