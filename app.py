@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Kindle Bitcoin Price Display — v1.7.0-rc3 public release candidate.
+"""Kindle Bitcoin Price Display — v1.7.0 public release.
 
 Public-release reliability goals:
 - Config-driven refresh intervals with comments in extras.config.
@@ -31,7 +31,7 @@ import pytz
 import requests
 from PIL import Image, ImageDraw, ImageFont
 
-VERSION = "1.7.0-rc3"
+VERSION = "1.7.0"
 APP_NAME = "kindle-btc-display"
 USER_AGENT = f"{APP_NAME}/{VERSION}"
 
