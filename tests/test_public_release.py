@@ -40,6 +40,15 @@ class PublicReleaseTests(unittest.TestCase):
         self.assertIn("lan-only", text)
         self.assertIn("requires **no secrets**", text)
 
+
+    def test_secondary_fiat_default_and_readme_examples(self):
+        extras = (ROOT / "config" / "extras.config.example").read_text(encoding="utf-8")
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertRegex(extras, r"(?m)^secondary_fiat=MXN$")
+        self.assertIn("configurable secondary fiat", readme.lower())
+        for code in ["CAD", "GBP", "EUR", "JPY", "RUB", "INR", "PKR", "VND", "BRL", "NGN", "IDR", "UAH", "PHP"]:
+            self.assertIn(code, readme)
+
     def test_internal_scheduler_public_default_is_off(self):
         text = (ROOT / "config" / "extras.config.example").read_text(encoding="utf-8")
         self.assertRegex(text, r"(?m)^internal_scheduler=off$")
