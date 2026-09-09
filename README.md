@@ -151,7 +151,7 @@ The application validates the selected code against the release-supported set. U
 | VND | Vietnamese đồng | Vietnam |
 | ZAR | South African rand | South Africa |
 
-CoinGecko's API changelog explicitly added Guatemala (`GTQ`) to its supported currencies, and v1.7.0 includes it as a selectable secondary fiat. CoinGecko's supported-currencies reference also exposes `VEF`; v1.7.0 retains that legacy Venezuelan code for provider compatibility.
+CoinGecko's API changelog historically added Guatemala (`GTQ`), but its current `supported_vs_currencies` response does not return GTQ. v1.7.0 therefore uses CoinGecko directly if it supplies GTQ and otherwise combines the live BTC/USD price with Banco de Guatemala's official USD/GTQ reference rate. CoinGecko's supported-currencies reference also exposes `VEF`; v1.7.0 retains that legacy Venezuelan code for provider compatibility.
 
 Former-G8 currency examples, today the G7 plus Russia: `CAD`, `GBP`, `EUR`, `JPY`, and `RUB`; the primary line already displays `USD`.
 
@@ -161,7 +161,7 @@ The release-supported list intentionally contains fiat codes only. CoinGecko's b
 
 See [Configuration](docs/CONFIGURATION.md) for provider and cache behavior.
 
-References: [CoinGecko supported currencies](https://docs.coingecko.com/reference/simple-supported-currencies) and [Chainalysis 2025 Global Crypto Adoption Index](https://www.chainalysis.com/blog/2025-global-crypto-adoption-index/).
+References: [CoinGecko supported currencies](https://docs.coingecko.com/reference/simple-supported-currencies), [CoinGecko changelog entry listing GTQ](https://docs.coingecko.com/changelog/10122018), [Banco de Guatemala TipoCambioDia Web Service](https://www.banguat.gob.gt/variables/ws/TipoCambio.asmx?op=TipoCambioDia), and [Chainalysis 2025 Global Crypto Adoption Index](https://www.chainalysis.com/blog/2025-global-crypto-adoption-index/).
 
 ## Provider resilience
 

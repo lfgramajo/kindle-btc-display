@@ -20,6 +20,7 @@ import os
 import random
 import threading
 import time
+import xml.etree.ElementTree as ET
 from datetime import datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -69,6 +70,7 @@ COINPAPRIKA_BASE = "https://api.coinpaprika.com/v1"
 CRYPTOCOMPARE_BASE = "https://min-api.cryptocompare.com/data"
 BINANCE_BASE = "https://api.binance.com"
 KRAKEN_BASE = "https://api.kraken.com/0/public"
+BANGUAT_EXCHANGE_RATE_URL = "https://www.banguat.gob.gt/variables/ws/TipoCambio.asmx"
 
 DEFAULT_EXTRAS = """# Kindle Bitcoin Price Display runtime config
 #
@@ -480,6 +482,46 @@ def fetch_price_unified(coin: dict[str, str | None], coins_list: list[dict[str, 
     return "N/A", "none"
 
 
+def fetch_usd_gtq_banguat() -> float | None:
+    """Return Banco de Guatemala's current reference GTQ-per-USD rate."""
+    envelope = (
+        '<?xml version="1.0" encoding="utf-8"?>'
+        '<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '
+        'xmlns:xsd="http://www.w3.org/2001/XMLSchema" '
+        'xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">'
+        '<soap:Body><TipoCambioDia xmlns="http://www.banguat.gob.gt/variables/ws/" />'
+        '</soap:Body></soap:Envelope>'
+    )
+    try:
+        response = requests.post(
+            BANGUAT_EXCHANGE_RATE_URL,
+            data=envelope.encode("utf-8"),
+            headers={
+                "Content-Type": "text/xml; charset=utf-8",
+                "SOAPAction": "http://www.banguat.gob.gt/variables/ws/TipoCambioDia",
+                "User-Agent": USER_AGENT,
+            },
+            timeout=10,
+        )
+        response.raise_for_status()
+        root = ET.fromstring(response.content)
+        references: list[float] = []
+        for element in root.iter():
+            if element.tag.endswith("referencia") and element.text:
+                try:
+                    value = float(element.text)
+                    if value > 0:
+                        references.append(value)
+                except ValueError:
+                    continue
+        if references:
+            return references[-1]
+        log_event("Banco de Guatemala response did not contain a USD/GTQ reference rate")
+    except Exception as e:
+        log_event(f"Banco de Guatemala USD/GTQ reference-rate error: {e}")
+    return None
+
+
 def _secondary_from_mxn_fallback(price_usd: float | int | None, config: dict[str, Any]) -> float | int | None:
     if config["secondary_fiat"] != "MXN" or price_usd is None:
         return None
@@ -629,11 +671,22 @@ def fetch_btc_main_live(config: dict[str, Any]) -> dict[str, Any] | None:
         ("kraken", lambda: fetch_btc_main_kraken(config)),
     ]
     usd_only_fallback = None
+    gtq_rate: float | None = None
+    gtq_rate_attempted = False
     for _name, fn in providers:
         item = fn()
         if item and item.get("price_usd") not in [None, "N/A"]:
             if item.get("price_secondary") not in [None, "N/A"]:
                 return item
+            if config["secondary_fiat"] == "GTQ":
+                if not gtq_rate_attempted:
+                    gtq_rate = fetch_usd_gtq_banguat()
+                    gtq_rate_attempted = True
+                if gtq_rate is not None:
+                    item["price_secondary"] = numeric_price(float(item["price_usd"]) * gtq_rate)
+                    item["secondary_updated_at"] = now_ts()
+                    item["provider"] = f"{item.get('provider', _name)}+banguat"
+                    return item
             if usd_only_fallback is None:
                 usd_only_fallback = item
     return usd_only_fallback
