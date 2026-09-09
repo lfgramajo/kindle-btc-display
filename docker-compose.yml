@@ -1,0 +1,32 @@
+services:
+  kindle-btc-display:
+    build: .
+    image: kindle-btc-display:1.7.0-rc2
+    container_name: kindle-btc-display
+    restart: unless-stopped
+    user: "10001:10001"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges=true
+    pids_limit: 128
+    mem_limit: 512m
+    cpus: "0.75"
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+    ports:
+      - "${HOST_BIND_IP:-127.0.0.1}:8787:8787"
+    volumes:
+      - ./config:/app/config:rw
+      - ./output:/app/output:rw
+      - ./logs:/app/logs:rw
+    environment:
+      APP_HOST: "0.0.0.0"
+      APP_PORT: "8787"
+      APP_BASE_DIR: "/app"
+      CONFIG_DIR: "/app/config"
+      OUTPUT_DIR: "/app/output"
+      LOGS_DIR: "/app/logs"
+      APP_TZ: "${APP_TZ:-UTC}"
+      PYTHONUNBUFFERED: "1"

@@ -1,0 +1,4 @@
+# Optional weather configuration. Leave city blank unless weather=on.
+city=
+openweather_key=
+weatherapi_key=

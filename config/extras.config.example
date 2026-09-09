@@ -1,0 +1,31 @@
+# Kindle Bitcoin Price Display runtime config
+#
+# The host cron trigger runs every 10 minutes by default. Cache TTLs below
+# control whether a network refresh is actually needed on each trigger.
+
+# BTC main price, MXN conversion, 24h change, and configured coin prices.
+price_refresh_minutes=10
+
+# 7-day BTC candle data.
+candles_refresh_minutes=10
+
+# All-time-high values for BTC and configured coins.
+ath_refresh_hours=12
+
+# Kindle/browser HTML page reload interval. 11 minutes avoids racing the
+# default 10-minute backend cron trigger.
+page_refresh_minutes=11
+
+# Public installs use host cron, so the in-process scheduler is off by default.
+# Turn on only if you deliberately do not use the host cron trigger.
+internal_scheduler=off
+
+# Used only when internal_scheduler=on.
+scheduler_check_seconds=60
+
+# Fallback conversion used only if a provider returns USD but not MXN.
+usd_mxn_fallback_rate=16.92
+
+# Optional modules.
+coins=on
+weather=off

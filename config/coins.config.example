@@ -1,0 +1,8 @@
+# Format: SYMBOL,coingecko_id,QUOTE
+# Default release set: top five non-stablecoin altcoins by market cap at release.
+# Edit this file to choose a different set. Explicit CoinGecko IDs avoid /coins/list.
+ETH,ethereum,USD
+BNB,binancecoin,USD
+XRP,ripple,USD
+SOL,solana,USD
+TRX,tron,USD
