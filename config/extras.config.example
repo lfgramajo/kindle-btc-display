@@ -3,7 +3,7 @@
 # The host cron trigger runs every 10 minutes by default. Cache TTLs below
 # control whether a network refresh is actually needed on each trigger.
 
-# BTC main price, MXN conversion, 24h change, and configured coin prices.
+# BTC main USD price, configurable secondary fiat, 24h change, and configured coin prices.
 price_refresh_minutes=10
 
 # 7-day BTC candle data.
@@ -23,7 +23,11 @@ internal_scheduler=off
 # Used only when internal_scheduler=on.
 scheduler_check_seconds=60
 
-# Fallback conversion used only if a provider returns USD but not MXN.
+# Secondary BTC fiat shown below USD. MXN is the release default.
+secondary_fiat=MXN
+
+# Legacy MXN-only fallback conversion. Used only when secondary_fiat=MXN and
+# a fallback provider gives USD but not MXN. Never applied to other fiat.
 usd_mxn_fallback_rate=16.92
 
 # Optional modules.
