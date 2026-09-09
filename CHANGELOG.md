@@ -3,7 +3,10 @@
 ## v1.7.0
 
 - Promoted v1.7.0-rc3 to the final release after clean-host installation, MXN-default, EUR-secondary-fiat, visual, cache-recovery, and uninstall/restore QA passed.
-- No functional changes from the validated RC3 runtime; release metadata and version labels only.
+- Added an explicit public table of all 46 release-supported fiat codes with currency names and country or issuing region.
+- Documented that the application uses Python's built-in `ThreadingHTTPServer`; no separate web server is required.
+- Trimmed the public repository to runtime files and user-facing documentation. Release-only tests, CI scaffolding, release manifests, contribution workflow, and internal release-process documents are not included in the public runtime repository.
+- No functional runtime changes from the validated RC3 implementation.
 
 ## v1.7.0-rc3
 
@@ -29,9 +32,7 @@ Public-release staging candidate based on the field-tested v1.6.3-r3 functional 
 - Added safe fresh-clone installer and cron deployment path.
 - Public default uses host cron every 10 minutes with `internal_scheduler=off`.
 - Added patient 180-second health readiness loop.
-- Added root `SECURITY.md`, complete configuration/technical docs, Kindle setup, release process, and contribution guide.
 - Removed systemd-timer instructions from the public deployment path.
-- Added Git/Container ignore rules and CI/OPSEC checks.
 - Weather failure logs no longer include exception URLs, reducing risk of API-key query strings appearing in logs.
 - Application functional data-fetch/cache/render architecture otherwise remains based on v1.6.3-r3.
 

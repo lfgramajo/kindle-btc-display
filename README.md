@@ -12,17 +12,18 @@ The functional core behind this public release was field-tested in daily use for
 
 ## What it shows
 
-- BTC/USD plus a configurable secondary fiat price (MXN by default)
+- BTC/USD plus a configurable secondary fiat price, MXN by default
+- 46 supported fiat codes in v1.7.0
 - 24-hour BTC change
 - 7-day BTC candlestick chart
 - Bitcoin ATH
-- Top-five non-stablecoin altcoin price/ATH table by default (configurable)
+- Top-five non-stablecoin altcoin price/ATH table by default, configurable
 - Optional weather module
 - Last-known-good data when a provider temporarily fails
 
 ## Why an old Kindle?
 
-E-ink is calm, readable, low-power, and perfect for information that should be present without demanding attention. This project turns an otherwise retired Kindle into a small market instrument for the desk.
+E-ink is calm, readable, low-power, and useful for information that should be present without demanding attention. This project turns an otherwise retired Kindle into a small market instrument for the desk.
 
 ## Quick install
 
@@ -35,18 +36,18 @@ E-ink is calm, readable, low-power, and perfect for information that should be p
 - A Kindle or browser on the same LAN
 
 ```bash
-git clone https://github.com/YOUR-ACCOUNT/kindle-btc-display.git
+git clone https://github.com/lfgramajo/kindle-btc-display.git
 cd kindle-btc-display
 ./install.sh
 ```
 
 The installer:
 
-1. builds the image before touching an existing installation,
-2. binds the service to a detected LAN IPv4 address,
-3. creates runtime config from `.example` files,
+1. builds the Docker image before touching an existing installation,
+2. detects the host LAN IPv4 address unless `HOST_BIND_IP` is provided,
+3. creates runtime configuration from the tracked `.example` files,
 4. starts a hardened non-root Docker container,
-5. installs a host cron refresh trigger every 10 minutes, and
+5. installs a host cron refresh trigger every 10 minutes,
 6. waits for `/healthz` before declaring the install GREEN.
 
 It never performs a global Docker prune and only targets the `kindle-btc-display` application.
@@ -56,6 +57,20 @@ At completion it prints the URL, for example:
 ```text
 http://YOUR_LAN_IP:8787/
 ```
+
+## HTTP server
+
+No separate Apache, Nginx, Flask, Gunicorn, or other web server needs to be installed.
+
+The HTTP service is built into `app.py` using Python's standard-library `ThreadingHTTPServer`. The Dockerfile starts it automatically with:
+
+```text
+python /app/app.py
+```
+
+Inside the container it listens on `0.0.0.0:8787`. Docker publishes port 8787 only on the host address selected by the installer and stored in `.env`.
+
+The installer handles the complete server startup through Docker Compose. A normal installation does not require manually starting Python or configuring a separate HTTP daemon.
 
 ## Refresh model
 
@@ -76,17 +91,74 @@ CoinGecko `/coins/list` is skipped when every configured coin already has an exp
 
 ## Choose your fiat currency
 
-The primary Bitcoin price is always shown in USD. The second Bitcoin price is configurable with `secondary_fiat` in `config/extras.config`; the release default is `MXN`. The selected code must be one of the fiat currencies supported by the application and CoinGecko.
+The primary Bitcoin price is always shown in USD. The second Bitcoin price is configured with `secondary_fiat` in `config/extras.config`. The release default is `MXN`.
 
 ```ini
 secondary_fiat=MXN
 ```
 
-Examples include currencies from the former G8 set (today the G7 plus Russia): `CAD`, `GBP`, `EUR`, `JPY`, and `RUB` (`USD` is already the primary display currency). Other widely used examples include `AUD`, `CHF`, `KRW`, and `MXN`.
+The application validates the selected code against the release-supported set. Unsupported codes fail validation instead of silently being relabeled.
 
-For the 2025 top-10 crypto-adoption markets reported by Chainalysis, the corresponding fiat examples are: `INR`, `USD`, `PKR`, `VND`, `BRL`, `NGN`, `IDR`, `UAH`, `PHP`, and `RUB`. This is a crypto-adoption list, not a Bitcoin-only trading-volume ranking.
+### Supported fiat currencies in v1.7.0
 
-The examples above are not the complete supported set. See [Configuration](docs/CONFIGURATION.md) for the full release-supported fiat list and provider behavior.
+| Code | Currency | Country / issuing region |
+| --- | --- | --- |
+| AED | United Arab Emirates dirham | United Arab Emirates |
+| ARS | Argentine peso | Argentina |
+| AUD | Australian dollar | Australia |
+| BDT | Bangladeshi taka | Bangladesh |
+| BHD | Bahraini dinar | Bahrain |
+| BMD | Bermudian dollar | Bermuda |
+| BRL | Brazilian real | Brazil |
+| CAD | Canadian dollar | Canada |
+| CHF | Swiss franc | Switzerland and Liechtenstein |
+| CLP | Chilean peso | Chile |
+| CNY | Chinese yuan, renminbi | China |
+| CZK | Czech koruna | Czech Republic |
+| DKK | Danish krone | Denmark |
+| EUR | Euro | Euro area, European Union |
+| GBP | Pound sterling | United Kingdom |
+| GEL | Georgian lari | Georgia |
+| HKD | Hong Kong dollar | Hong Kong |
+| HUF | Hungarian forint | Hungary |
+| IDR | Indonesian rupiah | Indonesia |
+| ILS | Israeli new shekel | Israel |
+| INR | Indian rupee | India |
+| JPY | Japanese yen | Japan |
+| KRW | South Korean won | South Korea |
+| KWD | Kuwaiti dinar | Kuwait |
+| LKR | Sri Lankan rupee | Sri Lanka |
+| MMK | Myanmar kyat | Myanmar |
+| MXN | Mexican peso | Mexico |
+| MYR | Malaysian ringgit | Malaysia |
+| NGN | Nigerian naira | Nigeria |
+| NOK | Norwegian krone | Norway |
+| NZD | New Zealand dollar | New Zealand |
+| PHP | Philippine peso | Philippines |
+| PKR | Pakistani rupee | Pakistan |
+| PLN | Polish złoty | Poland |
+| RUB | Russian ruble | Russia |
+| SAR | Saudi riyal | Saudi Arabia |
+| SEK | Swedish krona | Sweden |
+| SGD | Singapore dollar | Singapore |
+| THB | Thai baht | Thailand |
+| TRY | Turkish lira | Türkiye |
+| TWD | New Taiwan dollar | Taiwan |
+| UAH | Ukrainian hryvnia | Ukraine |
+| USD | United States dollar | United States |
+| VEF | Venezuelan bolívar fuerte, legacy code | Venezuela |
+| VND | Vietnamese đồng | Vietnam |
+| ZAR | South African rand | South Africa |
+
+CoinGecko's current supported-currencies endpoint still exposes `VEF`; v1.7.0 therefore retains it for provider compatibility even though it is a legacy Venezuelan currency code.
+
+Former-G8 currency examples, today the G7 plus Russia: `CAD`, `GBP`, `EUR`, `JPY`, and `RUB`; the primary line already displays `USD`.
+
+Currencies corresponding to the 2025 Chainalysis top-10 crypto-adoption markets: `INR`, `USD`, `PKR`, `VND`, `BRL`, `NGN`, `IDR`, `UAH`, `PHP`, and `RUB`. This is an adoption ranking, not a Bitcoin-only trading-volume ranking.
+
+The release-supported list intentionally contains fiat codes only. CoinGecko's broader `supported_vs_currencies` endpoint also exposes non-fiat quote units, which are not enabled as `secondary_fiat` values in v1.7.0.
+
+See [Configuration](docs/CONFIGURATION.md) for provider and cache behavior.
 
 References: [CoinGecko supported currencies](https://docs.coingecko.com/reference/simple-supported-currencies) and [Chainalysis 2025 Global Crypto Adoption Index](https://www.chainalysis.com/blog/2025-global-crypto-adoption-index/).
 
@@ -107,10 +179,10 @@ BTC main pricing is not CoinGecko-only. The application can fall through multipl
 
 ## Configuration
 
-- `config/extras.config` — refresh timing and optional modules
-- `config/coins.config` — displayed altcoins and explicit CoinGecko IDs
-- `config/weather.conf` — optional weather API credentials
-- `.env` — LAN bind address and application timezone
+- `config/extras.config`: refresh timing and optional modules
+- `config/coins.config`: displayed altcoins and explicit CoinGecko IDs
+- `config/weather.conf`: optional weather API credentials
+- `.env`: LAN bind address and application timezone
 
 See [Configuration](docs/CONFIGURATION.md) and the [Technical Manual](docs/TECHNICAL.md).
 
@@ -127,6 +199,10 @@ See [SECURITY.md](SECURITY.md).
 ## Troubleshooting
 
 See [Troubleshooting](docs/TROUBLESHOOTING.md).
+
+## Repository scope
+
+The public repository is intentionally limited to files needed to install, run, configure, understand, secure, and troubleshoot the application. Private QA evidence, release-engineering tests, CI scaffolding, release manifests, and internal release-process documents are not part of the public runtime repository.
 
 ## License
 

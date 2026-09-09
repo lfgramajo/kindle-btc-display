@@ -2,7 +2,7 @@
 
 ## Architecture
 
-Kindle Bitcoin Price Display is a small Python HTTP service that renders a single 800×600 grayscale PNG and serves it through explicit routes. Docker provides dependency isolation and a constrained runtime. A host cron trigger wakes the app every 10 minutes; cache TTLs determine whether provider calls are needed.
+Kindle Bitcoin Price Display is a small Python HTTP service that renders a single 800×600 grayscale PNG and serves it through explicit routes. The service uses Python's standard-library `ThreadingHTTPServer`; no separate Apache, Nginx, Flask, Gunicorn, or other web server is required. Docker provides dependency isolation and a constrained runtime. A host cron trigger wakes the app every 10 minutes; cache TTLs determine whether provider calls are needed.
 
 ```text
 Host cron
@@ -35,6 +35,27 @@ logs/
 ```
 
 None of these mutable runtime files belong in the public repository except the three `.example` configs.
+
+## HTTP server and startup
+
+`app.py` contains the HTTP server itself. Its `main()` function creates a `ThreadingHTTPServer` and serves the explicit application routes.
+
+The Dockerfile launches the application with:
+
+```text
+python /app/app.py
+```
+
+Docker Compose supplies:
+
+```text
+APP_HOST=0.0.0.0
+APP_PORT=8787
+```
+
+The container therefore listens on TCP 8787 internally. Docker publishes that port only on the host address in `HOST_BIND_IP`.
+
+The normal user does not manually start Python. `./install.sh` builds the image, writes runtime configuration, runs `docker compose up -d --no-build`, waits for `/healthz`, and installs the cron refresh trigger.
 
 ## Scheduling
 
@@ -127,10 +148,6 @@ The application is intentionally unauthenticated and is therefore a LAN-only ser
 ## Upgrade behavior
 
 The installer prebuilds the candidate image before stopping the current Kindle container. If an existing `/opt/kindle-btc-display` is present, it is moved to a timestamped archive under `/opt/kindle-btc-display-archive/`. Live config/cache and the last rendered PNG are restored into the new application root. No global Docker prune is used.
-
-## Tests
-
-The repository unit tests cover formatting, config parsing, cache freshness, CoinGecko list skip logic, and PNG rendering. CI also performs Python syntax checks, shell syntax checks, an OPSEC sentinel scan, and a Docker build.
 
 ## Secondary fiat behavior
 
