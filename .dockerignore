@@ -1,7 +1,5 @@
 .git
-.github
 docs
-tests
 .env
 __pycache__
 *.pyc
