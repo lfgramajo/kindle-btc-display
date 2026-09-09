@@ -1,8 +1,31 @@
+import ast
 import re
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def supported_secondary_fiats():
+    tree = ast.parse((ROOT / "app.py").read_text(encoding="utf-8"))
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        if any(isinstance(target, ast.Name) and target.id == "SUPPORTED_SECONDARY_FIATS" for target in node.targets):
+            value = ast.literal_eval(node.value)
+            return set(value)
+    raise AssertionError("SUPPORTED_SECONDARY_FIATS not found in app.py")
+
+
+def currency_block(text, heading):
+    pattern = re.compile(
+        re.escape(heading) + r".*?```text\n(.*?)\n```",
+        re.I | re.S,
+    )
+    match = pattern.search(text)
+    if not match:
+        raise AssertionError(f"currency block not found after heading: {heading}")
+    return set(match.group(1).split())
 
 
 class PublicReleaseTests(unittest.TestCase):
@@ -40,7 +63,6 @@ class PublicReleaseTests(unittest.TestCase):
         self.assertIn("lan-only", text)
         self.assertIn("requires **no secrets**", text)
 
-
     def test_secondary_fiat_default_and_readme_examples(self):
         extras = (ROOT / "config" / "extras.config.example").read_text(encoding="utf-8")
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
@@ -48,6 +70,19 @@ class PublicReleaseTests(unittest.TestCase):
         self.assertIn("configurable secondary fiat", readme.lower())
         for code in ["CAD", "GBP", "EUR", "JPY", "RUB", "INR", "PKR", "VND", "BRL", "NGN", "IDR", "UAH", "PHP"]:
             self.assertIn(code, readme)
+
+    def test_supported_secondary_fiat_docs_match_application(self):
+        supported = supported_secondary_fiats()
+        self.assertEqual(len(supported), 46)
+
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        configuration = (ROOT / "docs" / "CONFIGURATION.md").read_text(encoding="utf-8")
+
+        readme_codes = currency_block(readme, "### Supported fiat currencies in v1.7.0")
+        config_codes = currency_block(configuration, "Release-supported fiat codes:")
+
+        self.assertEqual(readme_codes, supported)
+        self.assertEqual(config_codes, supported)
 
     def test_internal_scheduler_public_default_is_off(self):
         text = (ROOT / "config" / "extras.config.example").read_text(encoding="utf-8")
