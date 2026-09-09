@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.7.0-rc3
+
+- Restored configurable secondary BTC fiat with `secondary_fiat=MXN` as the default.
+- CoinGecko requests and the rendered currency label now follow the selected fiat code.
+- Added cache currency identity handling so a previous MXN cache cannot be mislabeled after switching fiat.
+- Invalid or unsupported configured fiat codes fail validation instead of silently displaying the wrong currency.
+- Documented G8-era major currencies and currencies used by the 2025 top-10 crypto-adoption markets as examples.
+- Retained the legacy static MXN fallback only for `secondary_fiat=MXN`; it is never reused for another fiat.
+
 ## v1.7.0-rc2
 
 - Fixed fresh-install success path incorrectly returning exit code 1.
