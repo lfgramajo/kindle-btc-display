@@ -1,32 +1,39 @@
-name: CI
+name: Materialize v1.7.0 staging
 
 on:
   push:
-  pull_request:
+    branches:
+      - release/v1.7.0-build
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  test:
+  materialize:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.13'
-          cache: pip
-      - name: Install dependencies
-        run: python -m pip install -r requirements.txt
-      - name: Python syntax
-        run: python -m py_compile app.py
-      - name: Unit tests
-        run: python -m unittest discover -s tests -v
-      - name: Shell syntax
+      - name: Materialize final source
+        shell: bash
         run: |
+          set -e
+          git apply --check .release/app.patch
+          git apply .release/app.patch
+          cp .release/ci-final.yml .github/workflows/ci.yml
+          rm -rf .release
+          chmod +x install.sh uninstall.sh
+          printf '%s  app.py\n' '006666276f8360cf5b010e9c8e1a0d20765e427e7341f89c278798e0cb32863c' | sha256sum -c -
+          sha256sum -c RELEASE_MANIFEST.sha256
+          python -m py_compile app.py
           bash -n install.sh
           bash -n uninstall.sh
-      - name: OPSEC sentinel
-        run: python tests/opsec_scan.py
-      - name: Docker build
-        run: docker build -t kindle-btc-display:ci .
+          python tests/opsec_scan.py
+      - name: Commit materialized source
+        shell: bash
+        run: |
+          set -e
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Materialize v1.7.0 release source'
+          git push origin HEAD:release/v1.7.0-build

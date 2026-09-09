@@ -131,3 +131,9 @@ The installer prebuilds the candidate image before stopping the current Kindle c
 ## Tests
 
 The repository unit tests cover formatting, config parsing, cache freshness, CoinGecko list skip logic, and PNG rendering. CI also performs Python syntax checks, shell syntax checks, an OPSEC sentinel scan, and a Docker build.
+
+## Secondary fiat behavior
+
+The main BTC line remains USD. `secondary_fiat` controls the second BTC price and rendered label. `MXN` is the release default. CoinGecko is the authoritative arbitrary-fiat provider in v1.7.0 because its official `vs_currencies` interface publishes a supported-currency list. Existing fallback providers continue protecting the USD main price. The legacy static conversion is restricted to MXN only.
+
+The price cache stores the secondary-fiat identity. Changing the configured fiat forces the main-price cache path stale and prevents an older MXN value from being rendered under an EUR, GBP, JPY, or other label. If a refresh can update USD but cannot update the selected secondary fiat, a matching last-known-good secondary value may be retained instead of being replaced by an unrelated currency.

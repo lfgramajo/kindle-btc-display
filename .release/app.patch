@@ -1,0 +1,338 @@
+--- a/app.py
++++ b/app.py
+@@ -1,5 +1,5 @@
+ #!/usr/bin/env python3
+-"""Kindle Bitcoin Price Display — v1.7.0-rc2 public release candidate.
++"""Kindle Bitcoin Price Display — v1.7.0 public release.
+ 
+ Public-release reliability goals:
+ - Config-driven refresh intervals with comments in extras.config.
+@@ -31,7 +31,7 @@
+ import requests
+ from PIL import Image, ImageDraw, ImageFont
+ 
+-VERSION = "1.7.0-rc2"
++VERSION = "1.7.0"
+ APP_NAME = "kindle-btc-display"
+ USER_AGENT = f"{APP_NAME}/{VERSION}"
+ 
+@@ -75,7 +75,7 @@
+ # Timing values are configurable so API cadence and Kindle refresh behavior can
+ # be tuned without editing app.py.
+ 
+-# Fetch live BTC main price, MXN price, 24h change, and coin table prices.
++# Fetch live BTC main price, configurable secondary fiat, 24h change, and coin table prices.
+ # Recommended: 10 minutes. Lower values increase API pressure.
+ price_refresh_minutes=10
+ 
+@@ -97,7 +97,11 @@
+ internal_scheduler=off
+ scheduler_check_seconds=60
+ 
+-# Fallback conversion used only if an API gives USD but not MXN.
++# Secondary BTC fiat shown below USD. Must be a supported three-letter fiat code.
++secondary_fiat=MXN
++
++# Legacy MXN-only fallback conversion used only when secondary_fiat=MXN and a
++# fallback provider gives USD but not MXN. It is never applied to other fiat.
+ usd_mxn_fallback_rate=16.92
+ 
+ # Optional modules.
+@@ -111,6 +115,14 @@
+     "coins.config": "# Format: SYMBOL,coingecko_id,QUOTE\n# Default release set: top five non-stablecoin altcoins by market cap at release.\n# Edit this file to choose a different set. Explicit CoinGecko IDs avoid /coins/list.\nETH,ethereum,USD\nBNB,binancecoin,USD\nXRP,ripple,USD\nSOL,solana,USD\nTRX,tron,USD\n",
+ }
+ 
++SUPPORTED_SECONDARY_FIATS = {
++    "AED", "ARS", "AUD", "BDT", "BHD", "BMD", "BRL", "CAD", "CHF", "CLP",
++    "CNY", "CZK", "DKK", "EUR", "GBP", "GEL", "HKD", "HUF", "IDR", "ILS",
++    "INR", "JPY", "KRW", "KWD", "LKR", "MMK", "MXN", "MYR", "NGN", "NOK",
++    "NZD", "PHP", "PKR", "PLN", "RUB", "SAR", "SEK", "SGD", "THB", "TRY",
++    "TWD", "UAH", "USD", "VEF", "VND", "ZAR",
++}
++
+ PRICE_APIS = ["coinpaprika", "cryptocompare", "binance", "kraken", "coingecko"]
+ THREAD_LOCK = threading.Lock()
+ 
+@@ -212,6 +224,13 @@
+         return default
+ 
+ 
++def normalize_secondary_fiat(raw: str | None) -> str:
++    code = (raw or "MXN").strip().upper()
++    if code not in SUPPORTED_SECONDARY_FIATS:
++        raise ValueError(f"unsupported secondary_fiat={code!r}; choose a supported fiat code")
++    return code
++
++
+ def read_extras_conf() -> dict[str, Any]:
+     raw = parse_key_value_config(EXTRAS_CONF_PATH)
+     # Backward compatibility with v1.6.2 refresh_seconds.
+@@ -227,6 +246,7 @@
+         "page_refresh_minutes": read_int(raw.get("page_refresh_minutes"), 11, 1),
+         "internal_scheduler": boolish(raw.get("internal_scheduler", "off"), False),
+         "scheduler_check_seconds": read_int(raw.get("scheduler_check_seconds"), 60, 30),
++        "secondary_fiat": normalize_secondary_fiat(raw.get("secondary_fiat")),
+         "usd_mxn_fallback_rate": read_float(raw.get("usd_mxn_fallback_rate"), 16.92, 0.01),
+     }
+ 
+@@ -460,22 +480,55 @@
+     return "N/A", "none"
+ 
+ 
+-def fetch_btc_main_coingecko() -> dict[str, Any] | None:
++def _secondary_from_mxn_fallback(price_usd: float | int | None, config: dict[str, Any]) -> float | int | None:
++    if config["secondary_fiat"] != "MXN" or price_usd is None:
++        return None
++    return numeric_price(float(price_usd) * float(config["usd_mxn_fallback_rate"]))
++
++
++def _main_result(price_usd, price_secondary, secondary_fiat, change_pct, change_abs, provider):
++    result = {
++        "price_usd": price_usd,
++        "price_secondary": price_secondary if price_secondary is not None else "N/A",
++        "secondary_fiat": secondary_fiat,
++        "change_pct": change_pct,
++        "change_abs": change_abs,
++        "provider": provider,
++    }
++    if result["price_secondary"] not in [None, "N/A"]:
++        result["secondary_updated_at"] = now_ts()
++    return result
++
++
++def cached_secondary_fiat(main: dict[str, Any]) -> str | None:
++    fiat = main.get("secondary_fiat")
++    if fiat:
++        return str(fiat).upper()
++    if main.get("price_mxn") not in [None, "N/A"]:
++        return "MXN"
++    return None
++
++
++def fetch_btc_main_coingecko(config: dict[str, Any]) -> dict[str, Any] | None:
+     try:
++        secondary = str(config["secondary_fiat"]).lower()
++        currencies = "usd" if secondary == "usd" else f"usd,{secondary}"
+         data = request_json(
+             f"{COINGECKO_BASE}/simple/price",
+-            params={"ids": "bitcoin", "vs_currencies": "usd,mxn", "include_24hr_change": "true"},
++            params={"ids": "bitcoin", "vs_currencies": currencies, "include_24hr_change": "true"},
+             timeout=10,
+         )
+         btc = data.get("bitcoin", {})
+         price_usd = numeric_price(btc.get("usd"))
+-        price_mxn = numeric_price(btc.get("mxn"))
++        price_secondary = numeric_price(btc.get(secondary))
+         change_pct_raw = btc.get("usd_24h_change")
+         if price_usd is None:
+             return None
++        if secondary == "usd" and price_secondary is None:
++            price_secondary = price_usd
+         change_pct = round(float(change_pct_raw), 2) if change_pct_raw is not None else "N/A"
+         change_abs = int(round(float(price_usd) * (float(change_pct) / 100))) if isinstance(change_pct, (float, int)) else "N/A"
+-        return {"price_usd": price_usd, "price_mxn": price_mxn, "change_pct": change_pct, "change_abs": change_abs, "provider": "coingecko"}
++        return _main_result(price_usd, price_secondary, config["secondary_fiat"], change_pct, change_abs, "coingecko")
+     except Exception as e:
+         log_event(f"BTC main CoinGecko error: {e}")
+     return None
+@@ -483,17 +536,26 @@
+ 
+ def fetch_btc_main_cryptocompare(config: dict[str, Any]) -> dict[str, Any] | None:
+     try:
+-        data = request_json(f"{CRYPTOCOMPARE_BASE}/pricemultifull", params={"fsyms": "BTC", "tsyms": "USD,MXN"}, timeout=10)
++        secondary = str(config["secondary_fiat"])
++        # CryptoCompare's existing MXN path is preserved. Other fiat support is not
++        # assumed here without vendor documentation; CoinGecko is authoritative for
++        # configurable secondary fiat in this release.
++        tsyms = "USD,MXN" if secondary == "MXN" else "USD"
++        data = request_json(f"{CRYPTOCOMPARE_BASE}/pricemultifull", params={"fsyms": "BTC", "tsyms": tsyms}, timeout=10)
+         raw = data.get("RAW", {}).get("BTC", {})
+         usd = raw.get("USD", {})
+-        mxn = raw.get("MXN", {})
+         price_usd = numeric_price(usd.get("PRICE"))
+-        price_mxn = numeric_price(mxn.get("PRICE")) or numeric_price(float(price_usd) * float(config["usd_mxn_fallback_rate"]) if price_usd else None)
++        price_secondary = None
++        if secondary == "USD":
++            price_secondary = price_usd
++        elif secondary == "MXN":
++            mxn = raw.get("MXN", {})
++            price_secondary = numeric_price(mxn.get("PRICE")) or _secondary_from_mxn_fallback(price_usd, config)
+         change_pct = round(float(usd.get("CHANGEPCT24HOUR")), 2) if usd.get("CHANGEPCT24HOUR") is not None else "N/A"
+         change_abs = int(round(float(usd.get("CHANGE24HOUR")))) if usd.get("CHANGE24HOUR") is not None else "N/A"
+         if price_usd is None:
+             return None
+-        return {"price_usd": price_usd, "price_mxn": price_mxn, "change_pct": change_pct, "change_abs": change_abs, "provider": "cryptocompare"}
++        return _main_result(price_usd, price_secondary, secondary, change_pct, change_abs, "cryptocompare")
+     except Exception as e:
+         log_event(f"BTC main CryptoCompare error: {e}")
+     return None
+@@ -505,11 +567,11 @@
+         usd = data.get("quotes", {}).get("USD", {})
+         price_usd = numeric_price(usd.get("price"))
+         change_pct = round(float(usd.get("percent_change_24h")), 2) if usd.get("percent_change_24h") is not None else "N/A"
+-        price_mxn = numeric_price(float(price_usd) * float(config["usd_mxn_fallback_rate"]) if price_usd else None)
++        price_secondary = price_usd if config["secondary_fiat"] == "USD" else _secondary_from_mxn_fallback(price_usd, config)
+         change_abs = int(round(float(price_usd) * (float(change_pct) / 100))) if price_usd and isinstance(change_pct, (float, int)) else "N/A"
+         if price_usd is None:
+             return None
+-        return {"price_usd": price_usd, "price_mxn": price_mxn, "change_pct": change_pct, "change_abs": change_abs, "provider": "coinpaprika"}
++        return _main_result(price_usd, price_secondary, config["secondary_fiat"], change_pct, change_abs, "coinpaprika")
+     except Exception as e:
+         log_event(f"BTC main CoinPaprika error: {e}")
+     return None
+@@ -519,12 +581,12 @@
+     try:
+         data = request_json(f"{BINANCE_BASE}/api/v3/ticker/24hr", params={"symbol": "BTCUSDT"}, timeout=10)
+         price_usd = numeric_price(data.get("lastPrice"))
+-        price_mxn = numeric_price(float(price_usd) * float(config["usd_mxn_fallback_rate"]) if price_usd else None)
++        price_secondary = price_usd if config["secondary_fiat"] == "USD" else _secondary_from_mxn_fallback(price_usd, config)
+         change_pct = round(float(data.get("priceChangePercent")), 2) if data.get("priceChangePercent") is not None else "N/A"
+         change_abs = int(round(float(data.get("priceChange")))) if data.get("priceChange") is not None else "N/A"
+         if price_usd is None:
+             return None
+-        return {"price_usd": price_usd, "price_mxn": price_mxn, "change_pct": change_pct, "change_abs": change_abs, "provider": "binance"}
++        return _main_result(price_usd, price_secondary, config["secondary_fiat"], change_pct, change_abs, "binance")
+     except Exception as e:
+         log_event(f"BTC main Binance error: {e}")
+     return None
+@@ -541,7 +603,7 @@
+         price = float(item["c"][0])
+         open_price = float(item.get("o") or 0)
+         price_usd = numeric_price(price)
+-        price_mxn = numeric_price(price * float(config["usd_mxn_fallback_rate"]))
++        price_secondary = price_usd if config["secondary_fiat"] == "USD" else _secondary_from_mxn_fallback(price_usd, config)
+         if open_price > 0:
+             change_abs_val = price - open_price
+             change_pct_val = (change_abs_val / open_price) * 100
+@@ -552,7 +614,7 @@
+             change_pct = "N/A"
+         if price_usd is None:
+             return None
+-        return {"price_usd": price_usd, "price_mxn": price_mxn, "change_pct": change_pct, "change_abs": change_abs, "provider": "kraken"}
++        return _main_result(price_usd, price_secondary, config["secondary_fiat"], change_pct, change_abs, "kraken")
+     except Exception as e:
+         log_event(f"BTC main Kraken error: {e}")
+     return None
+@@ -560,18 +622,21 @@
+ 
+ def fetch_btc_main_live(config: dict[str, Any]) -> dict[str, Any] | None:
+     providers = [
+-        ("coingecko", lambda: fetch_btc_main_coingecko()),
++        ("coingecko", lambda: fetch_btc_main_coingecko(config)),
+         ("cryptocompare", lambda: fetch_btc_main_cryptocompare(config)),
+         ("coinpaprika", lambda: fetch_btc_main_coinpaprika(config)),
+         ("binance", lambda: fetch_btc_main_binance(config)),
+         ("kraken", lambda: fetch_btc_main_kraken(config)),
+     ]
++    usd_only_fallback = None
+     for _name, fn in providers:
+         item = fn()
+         if item and item.get("price_usd") not in [None, "N/A"]:
+-            return item
+-    return None
+-
++            if item.get("price_secondary") not in [None, "N/A"]:
++                return item
++            if usd_only_fallback is None:
++                usd_only_fallback = item
++    return usd_only_fallback
+ 
+ def fetch_btc_candles_live() -> dict[str, Any] | None:
+     try:
+@@ -725,6 +790,10 @@
+         return str(val)
+ 
+ 
++def format_secondary_price(price: Any, fiat: str) -> str:
++    return f"{format_value(price)} {fiat}"
++
++
+ def format_age(seconds: float | int | None) -> str:
+     if seconds is None:
+         return "unknown"
+@@ -739,7 +808,7 @@
+ 
+ 
+ def render_image(
+-    price_usd, price_mxn, change_abs, change_pct, ohlc, ohlc_timestamps,
++    price_usd, price_secondary, secondary_fiat, change_abs, change_pct, ohlc, ohlc_timestamps,
+     btc_ath, btc_ath_time, coins_table, weather_data, coins_on=True, weather_on=True,
+     data_note: str | None = None,
+ ):
+@@ -755,10 +824,10 @@
+     y_cursor += h + 6
+ 
+     font_med = ImageFont.truetype(FONT_PATH, FONT_SIZE_MED)
+-    mxn_str = f"{format_value(price_mxn)} MXN"
+-    bbox2 = draw.textbbox((0, 0), mxn_str, font=font_med)
++    secondary_str = format_secondary_price(price_secondary, secondary_fiat)
++    bbox2 = draw.textbbox((0, 0), secondary_str, font=font_med)
+     w2, h2 = bbox2[2] - bbox2[0], bbox2[3] - bbox2[1]
+-    draw.text(((WIDTH - w2) // 2, y_cursor), mxn_str, font=font_med, fill=0)
++    draw.text(((WIDTH - w2) // 2, y_cursor), secondary_str, font=font_med, fill=0)
+     y_cursor += h2 + 4
+ 
+     font_small = ImageFont.truetype(FONT_PATH, FONT_SIZE_SMALL)
+@@ -864,7 +933,10 @@
+ 
+             price_cache = load_json(PRICE_CACHE_FILE)
+             price_ttl = int(config["price_refresh_minutes"]) * 60
+-            prices_stale = force_network or not cache_is_fresh(price_cache, price_ttl)
++            cached_main = price_cache.get("main", {}) if isinstance(price_cache.get("main"), dict) else {}
++            cached_fiat = cached_secondary_fiat(cached_main)
++            currency_changed = bool(cached_fiat) and cached_fiat != config["secondary_fiat"]
++            prices_stale = force_network or currency_changed or not cache_is_fresh(price_cache, price_ttl)
+             api_idx_map = load_price_api_index()
+             if prices_stale:
+                 provider_status: dict[str, Any] = {}
+@@ -872,12 +944,36 @@
+                 btc_live = fetch_btc_main_live(config)
+                 if btc_live:
+                     main = btc_live
+-                    status["prices"] = {"state": "live", "provider": btc_live.get("provider")}
++                    price_status = {"state": "live", "provider": btc_live.get("provider")}
++                    if main.get("price_secondary") in [None, "N/A"] and cached_secondary_fiat(cached_main) == config["secondary_fiat"]:
++                        old_secondary = cached_main.get("price_secondary")
++                        if old_secondary in [None, "N/A"] and config["secondary_fiat"] == "MXN":
++                            old_secondary = cached_main.get("price_mxn")
++                        if old_secondary not in [None, "N/A"]:
++                            main["price_secondary"] = old_secondary
++                            main["secondary_updated_at"] = cached_main.get("secondary_updated_at", price_cache.get("updated_at"))
++                            main["secondary_source"] = "stale-cache"
++                            try:
++                                sec_age = int(max(0, now_ts() - float(main["secondary_updated_at"])))
++                            except Exception:
++                                sec_age = int(cache_age_seconds(price_cache) or 0)
++                            price_status["secondary_state"] = "stale-cache"
++                            price_status["secondary_age_seconds"] = sec_age
++                    if "secondary_state" not in price_status:
++                        price_status["secondary_state"] = "live" if main.get("price_secondary") not in [None, "N/A"] else "unavailable"
++                    status["prices"] = price_status
+                 elif isinstance(price_cache.get("main"), dict) and price_cache["main"].get("price_usd") not in [None, "N/A"]:
+-                    main = price_cache["main"]
++                    cached = dict(price_cache["main"])
++                    cached_fiat = cached_secondary_fiat(cached)
++                    if cached_fiat == "MXN" and cached.get("price_secondary") in [None, "N/A"]:
++                        cached["price_secondary"] = cached.get("price_mxn", "N/A")
++                    if cached_fiat == config["secondary_fiat"]:
++                        main = cached
++                    else:
++                        main = _main_result(cached.get("price_usd"), "N/A", config["secondary_fiat"], cached.get("change_pct", "N/A"), cached.get("change_abs", "N/A"), "stale-cache")
+                     status["prices"] = {"state": "stale-cache", "age_seconds": int(cache_age_seconds(price_cache) or 0)}
+                 else:
+-                    main = {"price_usd": "N/A", "price_mxn": "N/A", "change_pct": "N/A", "change_abs": "N/A", "provider": "none"}
++                    main = _main_result("N/A", "N/A", config["secondary_fiat"], "N/A", "N/A", "none")
+                     status["prices"] = {"state": "error", "provider": "none"}
+ 
+                 coin_prices: dict[str, Any] = {}
+@@ -934,7 +1030,9 @@
+             if status.get("prices", {}).get("state") in {"stale-cache", "error"}:
+                 data_note = f"Data cache age: {format_age(data_age)}"
+             render_image(
+-                main.get("price_usd", "N/A"), main.get("price_mxn", "N/A"), main.get("change_abs", "N/A"), main.get("change_pct", "N/A"),
++                main.get("price_usd", "N/A"),
++                main.get("price_secondary", main.get("price_mxn", "N/A") if config["secondary_fiat"] == "MXN" else "N/A"),
++                config["secondary_fiat"], main.get("change_abs", "N/A"), main.get("change_pct", "N/A"),
+                 candles_cache.get("ohlc", []), candles_cache.get("ohlc_timestamps", []), btc_ath, btc_ath_time,
+                 coins_table, weather_data, coins_on=config["coins_on"], weather_on=config["weather_on"], data_note=data_note,
+             )

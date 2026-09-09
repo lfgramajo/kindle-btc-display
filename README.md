@@ -10,9 +10,11 @@ No exchange app. No notifications. No doomscrolling. Just a quiet 800×600 e-ink
 
 The functional core behind this public release was field-tested in daily use for more than a month before the repository was prepared for publication.
 
+![Kindle Bitcoin Price Display](docs/screenshots/kindle-btc-display.png)
+
 ## What it shows
 
-- BTC/USD and BTC/MXN
+- BTC/USD plus a configurable secondary fiat price (MXN by default)
 - 24-hour BTC change
 - 7-day BTC candlestick chart
 - Bitcoin ATH
@@ -67,11 +69,28 @@ candles_refresh_minutes=10
 ath_refresh_hours=12
 page_refresh_minutes=11
 internal_scheduler=off
+secondary_fiat=MXN
 coins=on
 weather=off
 ```
 
 CoinGecko `/coins/list` is skipped when every configured coin already has an explicit CoinGecko ID.
+
+## Choose your fiat currency
+
+The primary Bitcoin price is always shown in USD. The second Bitcoin price is configurable with `secondary_fiat` in `config/extras.config`; the release default is `MXN`. The selected code must be one of the fiat currencies supported by the application and CoinGecko.
+
+```ini
+secondary_fiat=MXN
+```
+
+Examples include currencies from the former G8 set (today the G7 plus Russia): `CAD`, `GBP`, `EUR`, `JPY`, and `RUB` (`USD` is already the primary display currency). Other widely used examples include `AUD`, `CHF`, `KRW`, and `MXN`.
+
+For the 2025 top-10 crypto-adoption markets reported by Chainalysis, the corresponding fiat examples are: `INR`, `USD`, `PKR`, `VND`, `BRL`, `NGN`, `IDR`, `UAH`, `PHP`, and `RUB`. This is a crypto-adoption list, not a Bitcoin-only trading-volume ranking.
+
+The examples above are not the complete supported set. See [Configuration](docs/CONFIGURATION.md) for the full release-supported fiat list and provider behavior.
+
+References: [CoinGecko supported currencies](https://docs.coingecko.com/reference/simple-supported-currencies) and [Chainalysis 2025 Global Crypto Adoption Index](https://www.chainalysis.com/blog/2025-global-crypto-adoption-index/).
 
 ## Provider resilience
 
