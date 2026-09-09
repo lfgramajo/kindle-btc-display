@@ -1,0 +1,13 @@
+.env
+__pycache__/
+*.py[cod]
+.pytest_cache/
+config/coins.config
+config/extras.config
+config/weather.conf
+config/cache/
+logs/
+output/
+*.tar.gz
+*.sha256
+.DS_Store

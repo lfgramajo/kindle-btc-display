@@ -1,0 +1,15 @@
+.git
+.github
+docs
+tests
+.env
+__pycache__
+*.pyc
+config/cache
+config/coins.config
+config/extras.config
+config/weather.conf
+logs
+output
+*.tar.gz
+*.sha256
