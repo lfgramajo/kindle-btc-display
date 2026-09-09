@@ -13,7 +13,7 @@ The functional core behind this public release was field-tested in daily use for
 ## What it shows
 
 - BTC/USD plus a configurable secondary fiat price, MXN by default
-- 46 supported fiat codes in v1.7.0
+- 47 supported fiat codes in v1.7.0
 - 24-hour BTC change
 - 7-day BTC candlestick chart
 - Bitcoin ATH
@@ -119,6 +119,7 @@ The application validates the selected code against the release-supported set. U
 | EUR | Euro | Euro area, European Union |
 | GBP | Pound sterling | United Kingdom |
 | GEL | Georgian lari | Georgia |
+| GTQ | Guatemalan quetzal | Guatemala |
 | HKD | Hong Kong dollar | Hong Kong |
 | HUF | Hungarian forint | Hungary |
 | IDR | Indonesian rupiah | Indonesia |
@@ -150,7 +151,7 @@ The application validates the selected code against the release-supported set. U
 | VND | Vietnamese đồng | Vietnam |
 | ZAR | South African rand | South Africa |
 
-CoinGecko's current supported-currencies endpoint still exposes `VEF`; v1.7.0 therefore retains it for provider compatibility even though it is a legacy Venezuelan currency code.
+CoinGecko's API changelog explicitly added Guatemala (`GTQ`) to its supported currencies, and v1.7.0 includes it as a selectable secondary fiat. CoinGecko's supported-currencies reference also exposes `VEF`; v1.7.0 retains that legacy Venezuelan code for provider compatibility.
 
 Former-G8 currency examples, today the G7 plus Russia: `CAD`, `GBP`, `EUR`, `JPY`, and `RUB`; the primary line already displays `USD`.
 

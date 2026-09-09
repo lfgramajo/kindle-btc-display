@@ -3,7 +3,7 @@
 ## v1.7.0
 
 - Promoted v1.7.0-rc3 to the final release after clean-host installation, MXN-default, EUR-secondary-fiat, visual, cache-recovery, and uninstall/restore QA passed.
-- Added an explicit public table of all 46 release-supported fiat codes with currency names and country or issuing region.
+- Added an explicit public table of all 47 release-supported fiat codes with currency names and country or issuing region, including GTQ (Guatemalan quetzal).
 - Documented that the application uses Python's built-in `ThreadingHTTPServer`; no separate web server is required.
 - Trimmed the public repository to runtime files and user-facing documentation. Release-only tests, CI scaffolding, release manifests, contribution workflow, and internal release-process documents are not included in the public runtime repository.
 - No functional runtime changes from the validated RC3 implementation.
