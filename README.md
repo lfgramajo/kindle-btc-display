@@ -12,7 +12,7 @@ The functional core behind this public release was field-tested in daily use for
 
 ## What it shows
 
-- BTC/USD plus a configurable secondary fiat price (MXN by default)
+- BTC/USD plus a configurable secondary fiat price (MXN by default, 46 fiat codes supported in v1.7.0)
 - 24-hour BTC change
 - 7-day BTC candlestick chart
 - Bitcoin ATH
@@ -35,7 +35,7 @@ E-ink is calm, readable, low-power, and perfect for information that should be p
 - A Kindle or browser on the same LAN
 
 ```bash
-git clone https://github.com/YOUR-ACCOUNT/kindle-btc-display.git
+git clone https://github.com/lfgramajo/kindle-btc-display.git
 cd kindle-btc-display
 ./install.sh
 ```
@@ -82,11 +82,25 @@ The primary Bitcoin price is always shown in USD. The second Bitcoin price is co
 secondary_fiat=MXN
 ```
 
-Examples include currencies from the former G8 set (today the G7 plus Russia): `CAD`, `GBP`, `EUR`, `JPY`, and `RUB` (`USD` is already the primary display currency). Other widely used examples include `AUD`, `CHF`, `KRW`, and `MXN`.
+### Supported fiat currencies in v1.7.0
 
-For the 2025 top-10 crypto-adoption markets reported by Chainalysis, the corresponding fiat examples are: `INR`, `USD`, `PKR`, `VND`, `BRL`, `NGN`, `IDR`, `UAH`, `PHP`, and `RUB`. This is a crypto-adoption list, not a Bitcoin-only trading-volume ranking.
+The complete release-supported set is:
 
-The examples above are not the complete supported set. See [Configuration](docs/CONFIGURATION.md) for the full release-supported fiat list and provider behavior.
+```text
+AED ARS AUD BDT BHD BMD BRL CAD CHF CLP CNY CZK DKK EUR GBP GEL HKD HUF
+IDR ILS INR JPY KRW KWD LKR MMK MXN MYR NGN NOK NZD PHP PKR PLN RUB SAR
+SEK SGD THB TRY TWD UAH USD VEF VND ZAR
+```
+
+That is 46 fiat codes. The application validates `secondary_fiat` against this exact set, so unsupported codes fail clearly instead of being silently relabeled.
+
+Former-G8 currency examples (today the G7 plus Russia): `CAD`, `GBP`, `EUR`, `JPY`, and `RUB`; the primary line already displays `USD`.
+
+Currencies corresponding to the 2025 Chainalysis top-10 crypto-adoption markets: `INR`, `USD`, `PKR`, `VND`, `BRL`, `NGN`, `IDR`, `UAH`, `PHP`, and `RUB`. This is an adoption ranking, not a Bitcoin-only trading-volume ranking.
+
+The release-supported list intentionally contains fiat codes only. CoinGecko's broader `supported_vs_currencies` endpoint also exposes non-fiat quote units, which are not enabled as `secondary_fiat` values in v1.7.0.
+
+See [Configuration](docs/CONFIGURATION.md) for provider and cache behavior.
 
 References: [CoinGecko supported currencies](https://docs.coingecko.com/reference/simple-supported-currencies) and [Chainalysis 2025 Global Crypto Adoption Index](https://www.chainalysis.com/blog/2025-global-crypto-adoption-index/).
 
@@ -107,10 +121,10 @@ BTC main pricing is not CoinGecko-only. The application can fall through multipl
 
 ## Configuration
 
-- `config/extras.config` — refresh timing and optional modules
-- `config/coins.config` — displayed altcoins and explicit CoinGecko IDs
-- `config/weather.conf` — optional weather API credentials
-- `.env` — LAN bind address and application timezone
+- `config/extras.config`: refresh timing and optional modules
+- `config/coins.config`: displayed altcoins and explicit CoinGecko IDs
+- `config/weather.conf`: optional weather API credentials
+- `.env`: LAN bind address and application timezone
 
 See [Configuration](docs/CONFIGURATION.md) and the [Technical Manual](docs/TECHNICAL.md).
 
