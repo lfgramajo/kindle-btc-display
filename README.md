@@ -165,7 +165,33 @@ References: [CoinGecko supported currencies](https://docs.coingecko.com/referenc
 
 ## Provider resilience
 
-BTC main pricing is not CoinGecko-only. The application can fall through multiple public providers and retains last-known-good cache data if live calls fail. The current 7-day candle source is CoinGecko with cache fallback.
+The application names and uses multiple public price providers rather than depending on CoinGecko alone.
+
+For the **BTC main price**, every fresh network attempt uses this fallback chain:
+
+1. CoinGecko
+2. CryptoCompare
+3. CoinPaprika
+4. Binance
+5. Kraken
+
+This is sequential failover. A fresh BTC-main request starts with CoinGecko. If that provider does not return a usable result for the requested display, the application tries CryptoCompare, then CoinPaprika, then Binance, then Kraken. If no provider can supply a usable live value, matching last-known-good cache data is used when available.
+
+For the **coin table**, provider selection is a persistent per-symbol round-robin rotation:
+
+1. CoinPaprika
+2. CryptoCompare
+3. Binance
+4. Kraken
+5. CoinGecko
+
+A symbol starts from its saved provider position. If that provider fails, the application tries the next provider and continues around the list until one succeeds or all five have been attempted. After a success, the next provider becomes that symbol's starting point on its following network refresh. The first run for a symbol may begin at any point in the rotation.
+
+Example: if CryptoCompare is the current starting provider and fails, the application tries Binance, then Kraken, then CoinGecko, then CoinPaprika. If Binance succeeds, the next refresh for that symbol starts with Kraken.
+
+For `GTQ`, Banco de Guatemala is a special secondary-fiat fallback when CoinGecko does not supply GTQ. Candles and ATH still use CoinGecko with last-known-good cache behavior.
+
+See [API Providers](docs/API_PROVIDERS.md) for the detailed provider and cache rules.
 
 ## Endpoints
 
