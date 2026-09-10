@@ -31,9 +31,30 @@ E-ink is calm, readable, low-power, and useful for information that should be pr
 
 - Debian/Ubuntu-style Linux host
 - Docker Engine with Docker Compose v2
+- `sudo`
 - `curl`
+- `systemd` / `systemctl`
 - `cron`
 - A Kindle or browser on the same LAN
+
+### Tested release baseline
+
+The following versions are the known-good software baseline used for v1.7.0 validation. They document what was actually tested and worked; they are not claimed as strict minimum versions. The installer checks for the required tools and for Docker Compose v2, but does not require these exact package versions.
+
+| Component | Tested version / release | Role |
+| --- | --- | --- |
+| Ubuntu | 24.04.5 LTS | End-to-end QA host |
+| Docker Engine | 29.1.3 (`docker.io` 29.1.3-0ubuntu3~24.04.2) | Container engine |
+| Docker Compose | v2.40.3 (`docker-compose-v2` 2.40.3+ds1-0ubuntu1~24.04.1) | Application build/start |
+| containerd | 2.2.1-0ubuntu1~24.04.3 | Docker runtime dependency in tested host stack |
+| runc | 1.3.4-0ubuntu1~24.04.1 | OCI runtime in tested host stack |
+| Bash | 5.2.21 | Installer/uninstaller shell |
+| Python container runtime | `python:3.13-slim` | Runs `app.py`; final release verification also used CPython 3.13.15 for syntax checks |
+| requests | 2.32.5 | HTTP client inside the image |
+| Pillow | 11.3.0 | 800×600 image rendering inside the image |
+| pytz | 2025.2 | Timezone handling inside the image |
+
+`sudo`, `curl`, `systemctl`, and `cron` were present on the tested Ubuntu 24.04.5 host. Their host package versions are not pinned by this release. Python and the Python packages are installed inside the Docker image, not directly on the host.
 
 ```bash
 git clone https://github.com/lfgramajo/kindle-btc-display.git
